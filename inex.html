@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>StackLab | Undo & Redo Studio</title>
+
+    <style>
+        :root {
+            --bg: #0b1020;
+            --panel: rgba(20, 29, 53, 0.92);
+            --line: rgba(164, 180, 219, 0.18);
+            --text: #edf2ff;
+            --muted: #a7b4d0;
+            --accent: #8b9cff;
+            --accent2: #52e0c4;
+            --danger: #ff8e9e;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            color: var(--text);
+            font-family: "Segoe UI", Arial, sans-serif;
+
+            background:
+                radial-gradient(
+                    circle at 10% 0%,
+                    rgba(104, 121, 255, 0.22),
+                    transparent 30%
+                ),
+                radial-gradient(
+                    circle at 90% 20%,
+                    rgba(44, 216, 185, 0.12),
+                    transparent 28%
+                ),
+                var(--bg);
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 18px;
+            max-width: 1200px;
+            margin: auto;
+            padding: 28px 24px 18px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo {
+            width: 44px;
+            height: 44px;
+            display: grid;
+            place-items: center;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #8b9cff, #5965d9);
+            font-size: 25px;
+            box-shadow: 0 8px 24px rgba(105, 119, 255, 0.28);
+        }
+
+        .brand h1 {
+            margin: 0;
+            font-size: 20px;
+        }
+
+        .brand p {
+            margin: 4px 0 0;
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .badge {
+            border: 1px solid var(--line);
+            border-radius: 999px;
+            padding: 9px 13px;
+            color: var(--accent2);
+            font-size: 12px;
+        }
+
+        main {
+            max-width: 1200px;
+            margin: auto;
+            padding: 10px 24px 36px;
+        }
+
+        .hero {
+            margin: 12px 0 24px;
+        }
+
+        .eyebrow {
+            color: var(--accent2);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        .hero h2 {
+            font-size: clamp(28px, 4vw, 44px);
+            line-height: 1.1;
+            margin: 10px 0;
+            letter-spacing: -1px;
+        }
+
+        .hero p {
+            max-width: 720px;
+            color: var(--muted);
+            line-height: 1.7;
+            margin: 0;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 14px;
+            margin: 24px 0;
+        }
+
+        .stat,
+        .panel {
+            background: var(--panel);
+            border: 1px solid var(--line);
+            border-radius: 20px;
+            box-shadow: 0 18px 50px rgba(0, 0, 0, 0.22);
+        }
+
+        .stat {
+            padding: 18px 20px;
+        }
+
+        .stat span {
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .stat strong {
+            display: block;
+            font-size: 27px;
+            margin-top: 7px;
+        }
+
+        .workspace {
+            display: grid;
+            grid-template-columns: minmax(0, 1.25fr) minmax(300px, 0.75fr);
+            gap: 18px;
+            align-items: start;
+        }
+
+        .panel {
+            padding: 22px;
+        }
+
+        .panel-head {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .panel h3 {
+            margin: 0;
+            font-size: 17px;
+        }
+
+        .sub {
+            color: var(--muted);
+            font-size: 12px;
+            margin-top: 6px;
+        }
+
+        textarea {
+            display: block;
+            width: 100%;
+            min-height: 250px;
+            resize: vertical;
+            padding: 17px;
+            border: 1px solid var(--line);
+            border-radius: 14px;
+            background: #0c1326;
+            color: var(--text);
+            outline: none;
+            line-height: 1.7;
+            font: 14px/1.7 Consolas, monospace;
+        }
+
+        textarea:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(139, 156, 255, 0.12);
+        }
+
+        .controls {
+            display: flex;
+            gap: 9px;
+            flex-wrap: wrap;
+            margin: 16px 0;
+        }
+
+        button {
+            border: 1px solid var(--line);
+            background: #1a2542;
+            color: var(--text);
+            border-radius: 11px;
+            padding: 11px 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.15s ease, opacity 0.15s ease;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            border-color: var(--accent);
+        }
+
+        button:disabled {
+            opacity: 0.38;
+            cursor: not-allowed;
+        }
+
+        .primary {
+            background: linear-gradient(135deg, #7888ff, #5c6de3);
+            border: none;
+        }
+
+        .secondary {
+            background: rgba(82, 224, 196, 0.1);
+            border-color: rgba(82, 224, 196, 0.3);
+        }
+
+        .status {
+            min-height: 20px;
+            color: var(--accent2);
+            font-size: 12px;
+            margin-top: 12px;
+            line-height: 1.6;
+        }
+
+        .stack-box {
+            background: #0c1326;
+            border: 1px solid var(--line);
+            border-radius: 15px;
+            padding: 14px;
+            min-height: 145px;
+        }
+
+        .stack-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            font-size: 12px;
+            color: var(--muted);
+            margin-bottom: 12px;
+        }
+
+        .stack-list {
+            display: flex;
+            flex-direction: column-reverse;
+            gap: 8px;
+        }
+
+        .stack-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 11px;
+            border: 1px solid rgba(139, 156, 255, 0.26);
+            border-radius: 10px;
+            background: rgba(139, 156, 255, 0.09);
+            font-size: 12px;
+            overflow-wrap: anywhere;
+        }
+
+        .stack-item.top {
+            border-color: rgba(82, 224, 196, 0.6);
+            background: rgba(82, 224, 196, 0.1);
+        }
+
+        .stack-item small {
+            color: var(--muted);
+            white-space: nowrap;
+        }
+
+        .empty {
+            color: #7f8ba8;
+            text-align: center;
+            padding: 25px 8px;
+            font-size: 12px;
+        }
+
+        .explain {
+            margin-top: 20px;
+        }
+
+        .explain p {
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.7;
+        }
+
+        .flow {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        .flow div {
+            padding: 13px;
+            border-radius: 12px;
+            background: rgba(139, 156, 255, 0.08);
+            border: 1px solid var(--line);
+        }
+
+        .flow strong {
+            display: block;
+            font-size: 12px;
+            margin-bottom: 6px;
+        }
+
+        .flow span {
+            color: var(--muted);
+            font-size: 11px;
+            line-height: 1.6;
+        }
+
+        footer {
+            max-width: 1200px;
+            margin: auto;
+            padding: 0 24px 28px;
+            color: #7f8ba8;
+            font-size: 11px;
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        @media (max-width: 820px) {
+            .workspace {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 520px) {
+            header {
+                padding: 20px 16px 10px;
+            }
+
+            main {
+                padding: 10px 16px 28px;
+            }
+
+            .badge {
+                display: none;
+            }
+
+            .stats {
+                gap: 8px;
+            }
+
+            .stat {
+                padding: 13px;
+            }
+
+            .stat strong {
+                font-size: 21px;
+            }
+
+            .panel {
+                padding: 16px;
+            }
+
+            .flow {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<header>
+    <div class="brand">
+        <div class="logo" aria-hidden="true">↶</div>
+
+        <div>
+            <h1>StackLab</h1>
+            <p>Data Structures · Interactive Demonstration</p>
+        </div>
+    </div>
+
+    <div class="badge">● STACK DATA STRUCTURE</div>
+</header>
+
+<main>
+
+    <section class="hero">
+        <div class="eyebrow">Real-world application</div>
+
+        <h2>Undo &amp; Redo Text Studio</h2>
+
+        <p>
+            Explore how stacks power Undo and Redo features in text editors.
+            Save changes, reverse previous edits, and restore undone versions
+            while watching the stacks update in real time.
+        </p>
+    </section>
+
+    <section class="stats">
+
+        <div class="stat">
+            <span>Undo stack size</span>
+            <strong id="undoCount">0</strong>
+        </div>
+
+        <div class="stat">
+            <span>Redo stack size</span>
+            <strong id="redoCount">0</strong>
+        </div>
+
+        <div class="stat">
+            <span>Current text length</span>
+            <strong id="charCount">0</strong>
+        </div>
+
+    </section>
+
+    <section class="workspace">
+
+        <div class="panel">
+
+            <div class="panel-head">
+                <div>
+                    <h3>Writing workspace</h3>
+                    <div class="sub">
+                        Edit the text, then save a change to create a history state.
+                    </div>
+                </div>
+            </div>
+
+            <textarea
+                id="editor"
+                aria-label="Text editor"
+                placeholder="Start typing your notes here..."
+            >Welcome to StackLab.
+
+This interactive application demonstrates how a stack supports Undo and Redo.
+
+Edit this text, save your change, and experiment with the stack operations.</textarea>
+
+            <div class="controls">
+                <button class="primary" id="saveBtn">
+                    + Save Change
+                </button>
+
+                <button id="undoBtn" disabled>
+                    ↶ Undo
+                </button>
+
+                <button id="redoBtn" disabled>
+                    ↷ Redo
+                </button>
+
+                <button class="secondary" id="sampleBtn">
+                    Load Sample
+                </button>
+
+                <button id="clearBtn">
+                    Clear
+                </button>
+            </div>
+
+            <div class="status" id="status" role="status">
+                Ready. Edit the text and save a change to begin.
+            </div>
+
+            <div class="explain">
+
+                <h3>How the application works</h3>
+
+                <div class="flow">
+
+                    <div>
+                        <strong>1. PUSH</strong>
+                        <span>
+                            Save the previous version onto the undo stack.
+                        </span>
+                    </div>
+
+                    <div>
+                        <strong>2. POP</strong>
+                        <span>
+                            Remove the latest saved state and restore it.
+                        </span>
+                    </div>
+
+                    <div>
+                        <strong>3. REDO</strong>
+                        <span>
+                            Store undone versions so they can be restored.
+                        </span>
+                    </div>
+
+                </div>
+            </div>
+
+        </div>
+
+        <aside class="panel">
+
+            <div class="panel-head">
+                <div>
+                    <h3>Stack Visualizer</h3>
+                    <div class="sub">
+                        The newest item is displayed at the top.
+                    </div>
+                </div>
+            </div>
+
+            <div class="stack-box">
+
+                <div class="stack-title">
+                    <span>UNDO STACK</span>
+                    <span id="undoTopLabel">TOP: EMPTY</span>
+                </div>
+
+                <div class="stack-list" id="undoStack">
+                    <div class="empty">
+                        No saved states yet.
+                    </div>
+                </div>
+
+            </div>
+
+            <div style="height: 14px;"></div>
+
+            <div class="stack-box">
+
+                <div class="stack-title">
+                    <span>REDO STACK</span>
+                    <span id="redoTopLabel">TOP: EMPTY</span>
+                </div>
+
+                <div class="stack-list" id="redoStack">
+                    <div class="empty">
+                        Nothing to redo yet.
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="explain">
+                <h3>Why a stack?</h3>
+
+                <p>
+                    A stack follows LIFO: Last In, First Out.
+                    The most recent edit is often the first edit a user
+                    wants to reverse. The push and pop operations make
+                    this history management straightforward and efficient.
+                </p>
+            </div>
+
+        </aside>
+
+    </section>
+
+</main>
+
+<footer>
+    <span>StackLab · Educational Prototype</span>
+    <span>Core operations: Push, Pop, Peek and Clear</span>
+</footer>
+
+<script>
+"use strict";
+
+/*
+    STACKLAB: UNDO AND REDO TEXT STUDIO
+
+    This application demonstrates stack operations using JavaScript arrays.
+
+    PUSH: Adds an element to the top of a stack.
+    POP: Removes and returns the top element.
+    PEEK: Reads the top element without removing it.
+    LIFO: Last In, First Out.
+*/
+
+const editor = document.getElementById("editor");
+
+const undoStack = [];
+const redoStack = [];
+
+let currentText = editor.value;
+let stateNumber = 0;
+
+const undoCount = document.getElementById("undoCount");
+const redoCount = document.getElementById("redoCount");
+const charCount = document.getElementById("charCount");
+
+const undoBtn = document.getElementById("undoBtn");
+const redoBtn = document.getElementById("redoBtn");
+
+const statusBox = document.getElementById("status");
+
+
+/* Display a status message to the user. */
+function announce(message) {
+    statusBox.textContent = message;
+}
+
+
+/* Create a history record for a text state. */
+function makeState(text) {
+    stateNumber++;
+
+    return {
+        id: stateNumber,
+        text: text,
+        savedAt: new Date().toLocaleTimeString()
+    };
+}
+
+
+/* Shorten long text previews for the stack visualizer. */
+function preview(text) {
+    const cleaned = text.replace(/\s+/g, " ").trim();
+
+    if (cleaned.length > 42) {
+        return cleaned.slice(0, 42) + "...";
+    }
+
+    return cleaned || "(empty text)";
+}
+
+
+/*
+    Render a stack visually.
+
+    The top element is the last element in the array.
+    The visual order is reversed so the newest item appears at the top.
+*/
+function renderStack(container, stack, emptyMessage, topLabel) {
+    container.innerHTML = "";
+
+    if (stack.length === 0) {
+        const empty = document.createElement("div");
+
+        empty.className = "empty";
+        empty.textContent = emptyMessage;
+
+        container.appendChild(empty);
+
+        topLabel.textContent = "TOP: EMPTY";
+
+        return;
+    }
+
+    /* PEEK: Inspect the top item without removing it. */
+    const topItem = stack[stack.length - 1];
+
+    topLabel.textContent = "TOP: STATE " + topItem.id;
+
+    stack.forEach(function(state, index) {
+        const item = document.createElement("div");
+
+        item.className = "stack-item";
+
+        if (index === stack.length - 1) {
+            item.classList.add("top");
+        }
+
+        const description = document.createElement("span");
+        description.textContent = preview(state.text);
+
+        const label = document.createElement("small");
+
+        label.textContent =
+            "S" + state.id +
+            (index === stack.length - 1 ? " · TOP" : "");
+
+        item.appendChild(description);
+        item.appendChild(label);
+
+        container.appendChild(item);
+    });
+}
+
+
+/* Refresh all counters, buttons and stack visualisations. */
+function render() {
+    undoCount.textContent = undoStack.length;
+    redoCount.textContent = redoStack.length;
+
+    charCount.textContent = editor.value.length;
+
+    undoBtn.disabled = undoStack.length === 0;
+    redoBtn.disabled = redoStack.length === 0;
+
+    renderStack(
+        document.getElementById("undoStack"),
+        undoStack,
+        "No saved states yet. Save a change to push a state.",
+        document.getElementById("undoTopLabel")
+    );
+
+    renderStack(
+        document.getElementById("redoStack"),
+        redoStack,
+        "Nothing to redo yet.",
+        document.getElementById("redoTopLabel")
+    );
+}
+
+
+/*
+    SAVE CHANGE
+
+    If the text has changed, push the previous version onto the undo stack.
+    A new edit invalidates the redo history.
+*/
+function saveChange() {
+    const nextText = editor.value;
+
+    if (nextText === currentText) {
+        announce("No new change detected. Edit the text before saving.");
+        return;
+    }
+
+    undoStack.push(makeState(currentText));
+
+    currentText = nextText;
+
+    /* A new edit clears the redo stack. */
+    redoStack.length = 0;
+
+    render();
+
+    announce(
+        "Change saved. Previous version pushed onto the undo stack."
+    );
+}
+
+
+/*
+    UNDO
+
+    1. Preserve the current version on the redo stack.
+    2. Pop the most recent previous version from the undo stack.
+    3. Restore that version in the editor.
+*/
+function undo() {
+    if (undoStack.length === 0) {
+        announce("Undo is unavailable because the undo stack is empty.");
+        return;
+    }
+
+    redoStack.push(makeState(currentText));
+
+    /* POP: Remove the latest previous state. */
+    const previous = undoStack.pop();
+
+    currentText = previous.text;
+    editor.value = currentText;
+
+    render();
+
+    announce(
+        "Undo complete. Restored the most recent previous version."
+    );
+}
+
+
+/*
+    REDO
+
+    1. Preserve the current version for future undo.
+    2. Pop the latest undone version from the redo stack.
+    3. Restore that version in the editor.
+*/
+function redo() {
+    if (redoStack.length === 0) {
+        announce("Redo is unavailable because the redo stack is empty.");
+        return;
+    }
+
+    undoStack.push(makeState(currentText));
+
+    const next = redoStack.pop();
+
+    currentText = next.text;
+    editor.value = currentText;
+
+    render();
+
+    announce(
+        "Redo complete. Restored the version that was undone."
+    );
+}
+
+
+/* Clear the editor while preserving the previous version for Undo. */
+function clearEditor() {
+    if (editor.value === "" && currentText === "") {
+        announce("The editor is already empty.");
+        return;
+    }
+
+    undoStack.push(makeState(currentText));
+
+    currentText = "";
+    editor.value = "";
+
+    redoStack.length = 0;
+
+    render();
+
+    announce(
+        "Editor cleared. Use Undo to restore the previous text."
+    );
+}
+
+
+/* Load demonstration text to help test the application. */
+function loadSample() {
+    const sample =
+        "STACK APPLICATIONS IN EVERYDAY COMPUTING\n\n" +
+        "1. Undo and Redo in text editors\n" +
+        "2. Browser navigation history\n" +
+        "3. Function calls and recursion\n" +
+        "4. Expression evaluation\n" +
+        "5. Syntax checking\n" +
+        "6. Backtracking algorithms\n\n" +
+        "This sample demonstrates how stack operations manage text history.";
+
+    if (sample === currentText) {
+        announce("The sample text is already loaded.");
+        return;
+    }
+
+    undoStack.push(makeState(currentText));
+
+    currentText = sample;
+    editor.value = sample;
+
+    redoStack.length = 0;
+
+    render();
+
+    announce(
+        "Sample loaded. The previous version was pushed onto the undo stack."
+    );
+}
+
+
+/* Connect the interface buttons to their functions. */
+document.getElementById("saveBtn").addEventListener(
+    "click",
+    saveChange
+);
+
+undoBtn.addEventListener("click", undo);
+
+redoBtn.addEventListener("click", redo);
+
+document.getElementById("clearBtn").addEventListener(
+    "click",
+    clearEditor
+);
+
+document.getElementById("sampleBtn").addEventListener(
+    "click",
+    loadSample
+);
+
+
+/* Keep the character counter updated while typing. */
+editor.addEventListener("input", function() {
+    charCount.textContent = editor.value.length;
+});
+
+
+/* Initialise the application when the page loads. */
+render();
+
+</script>
+
+</body>
+</html>
