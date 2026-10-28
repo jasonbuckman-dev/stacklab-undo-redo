@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StackLab | Undo & Redo Studio</title>
+<style>
+:root {
+  --bg: #0b1020;
+  --panel: rgba(20, 29, 53, .88);
+  --panel2: #111a30;
+  --line: rgba(164, 180, 219, .18);
+  --text: #edf2ff;
+  --muted: #a7b4d0;
+  --accent: #8b9cff;
+  --accent2: #52e0c4;
+  --danger: #ff8e9e;
+  --shadow: 0 18px 50px rgba(0,0,0,.25);
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; min-height: 100vh; color: var(--text);
+  font-family: Inter, "Segoe UI", Arial, sans-serif;
+  background:
+    radial-gradient(circle at 10% 0%, rgba(104,121,255,.22), transparent 30%),
+    radial-gradient(circle at 90% 20%, rgba(44,216,185,.12), transparent 28%),
+    var(--bg);
+}
+header {
+  display:flex; justify-content:space-between; align-items:center; gap:18px;
+  max-width:1200px; margin:auto; padding:28px 24px 18px;
+}
+.brand { display:flex; align-items:center; gap:12px; }
+.logo {
+  width:44px; height:44px; display:grid; place-items:center; border-radius:14px;
+  background:linear-gradient(135deg,var(--accent),#5965d9); font-size:23px;
+  box-shadow:0 8px 24px rgba(105,119,255,.28);
+}
+.brand h1 { margin:0; font-size:19px; letter-spacing:.2px; }
+.brand p { margin:4px 0 0; color:var(--muted); font-size:12px; }
+.badge { border:1px solid var(--line); border-radius:999px; padding:9px 13px; color:var(--accent2); font-size:12px; white-space:nowrap; }
+main { max-width:1200px; margin:auto; padding:10px 24px 36px; }
+.hero { margin:12px 0 24px; }
+.eyebrow { color:var(--accent2); text-transform:uppercase; letter-spacing:2px; font-size:11px; font-weight:800; }
+.hero h2 { font-size:clamp(28px,4vw,44px); line-height:1.08; margin:10px 0; letter-spacing:-1.4px; }
+.hero p { max-width:690px; color:var(--muted); line-height:1.65; margin:0; }
+.stats { display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin:24px 0; }
+.stat, .panel { background:var(--panel); border:1px solid var(--line); border-radius:20px; box-shadow:var(--shadow); }
+.stat { padding:17px 20px; }
+.stat span { color:var(--muted); font-size:12px; }
+.stat strong { display:block; font-size:26px; margin-top:7px; }
+.workspace { display:grid; grid-template-columns:minmax(0,1.25fr) minmax(300px,.75fr); gap:18px; align-items:start; }
+.panel { padding:22px; }
+.panel-head { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:15px; }
+.panel h3 { margin:0; font-size:17px; }
+.sub { color:var(--muted); font-size:12px; margin-top:6px; }
+.controls { display:flex; gap:9px; flex-wrap:wrap; margin:15px 0; }
+button {
+  border:1px solid var(--line); background:#1a2542; color:var(--text);
+  border-radius:11px; padding:10px 14px; font-weight:700; cursor:pointer;
+  transition:transform .15s ease, opacity .15s ease, border-color .15s ease;
+}
+button:hover:not(:disabled) { transform:translateY(-1px); border-color:var(--accent); }
+button:disabled { opacity:.38; cursor:not-allowed; }
+.primary { background:linear-gradient(135deg,#7888ff,#5c6de3); border:0; }
+.secondary { background:rgba(82,224,196,.1); border-color:rgba(82,224,196,.3); }
+textarea {
+  display:block; width:100%; min-height:250px; resize:vertical; padding:17px;
+  border:1px solid var(--line); border-radius:14px; background:#0c1326;
+  color:var(--text); outline:none; line-height:1.65; font:14px/1.65 Consolas,monospace;
+}
+textarea:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(139,156,255,.12); }
+.status { min-height:20px; color:var(--accent2); font-size:12px; margin-top:12px; }
+.stack-box { background:#0c1326; border:1px solid var(--line); border-radius:15px; padding:14px; min-height:160px; }
+.stack-title { display:flex; justify-content:space-between; align-items:center; font-size:12px; color:var(--muted); margin-bottom:12px; }
+.stack-list { display:flex; flex-direction:column-reverse; gap:8px; }
+.stack-item {
+  display:flex; align-items:center; justify-content:space-between; gap:12px;
+  padding:10px 12px; border:1px solid rgba(139,156,255,.26); border-radius:10px;
+  background:linear-gradient(90deg,rgba(139,156,255,.16),rgba(139,156,255,.04));
+  font-size:12px; animation:appear .2s ease;
+}
+.stack-item.top { border-color:rgba(82,224,196,.6); background:rgba(82,224,196,.1); }
+.stack-item small { color:var(--muted); }
+.empty { color:#7f8ba8; text-align:center; padding:28px 8px; font-size:12px; }
+.stack-label { color:var(--accent2); font-weight:800; font-size:10px; letter-spacing:.7px; }
+.explain { margin-top:18px; }
+.explain p { color:var(--muted); font-size:13px; line-height:1.65; }
+.flow { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:14px; }
+.flow div { padding:13px; border-radius:12px; background:rgba(139,156,255,.08); border:1px solid var(--line); }
+.flow strong { display:block; font-size:12px; margin-bottom:5px; }
+.flow span { color:var(--muted); font-size:11px; line-height:1.5; }
+footer { max-width:1200px; margin:auto; padding:0 24px 28px; color:#7f8ba8; font-size:11px; display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+@keyframes appear { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:translateY(0); } }
+@media(max-width:820px) { .workspace { grid-template-columns:1fr; } }
+@media(max-width:520px) {
+  header { padding:20px 16px 10px; align-items:flex-start; }
+  main { padding:10px 16px 28px; }
+  .badge { display:none; }
+  .stats { gap:8px; }
+  .stat { padding:13px; }
+  .stat strong { font-size:21px; }
+  .panel { padding:16px; }
+  .flow { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">
+    <div class="logo" aria-hidden="true">↶</div>
+    <div><h1>StackLab</h1><p>Data Structures · Interactive Demonstration</p></div>
+  </div>
+  <div class="badge">● STACK DATA STRUCTURE</div>
+</header>
+<main>
+  <section class="hero">
+    <div class="eyebrow">Real-world application</div>
+    <h2>Undo &amp; Redo Text Studio</h2>
+    <p>A practical demonstration of how stacks power the Undo and Redo features found in text editors. Each saved version is pushed onto a stack, and the most recent change can be reversed first.</p>
+  </section>
+
+  <section class="stats" aria-label="Stack statistics">
+    <div class="stat"><span>Undo stack size</span><strong id="undoCount">0</strong></div>
+    <div class="stat"><span>Redo stack size</span><strong id="redoCount">0</strong></div>
+    <div class="stat"><span>Current text length</span><strong id="charCount">0</strong></div>
+  </section>
+
+  <section class="workspace">
+    <div class="panel">
+      <div class="panel-head">
+        <div><h3>Writing workspace</h3><div class="sub">Type below, then save a change to create a history state.</div></div>
+      </div>
+      <textarea id="editor" aria-label="Text editor" placeholder="Start typing your notes here...">Welcome to StackLab.
+
+This demo shows how a stack supports Undo and Redo. Try changing this text, then click “Save change”.</textarea>
+      <div class="controls">
+        <button class="primary" id="saveBtn">＋ Save change</button>
+        <button id="undoBtn" disabled>↶ Undo</button>
+        <button id="redoBtn" disabled>↷ Redo</button>
+        <button class="secondary" id="sampleBtn">Load sample</button>
+        <button id="clearBtn">Clear</button>
+      </div>
+      <div class="status" id="status" role="status">Ready. Make an edit and save it to begin.</div>
+      <div class="explain">
+        <h3>How the application works</h3>
+        <div class="flow">
+          <div><strong>1. PUSH</strong><span>Save the current version onto the undo stack.</span></div>
+          <div><strong>2. POP</strong><span>Undo removes the latest saved state and restores the previous one.</span></div>
+          <div><strong>3. REDO</strong><span>The redo stack stores undone states so they can be restored.</span></div>
+        </div>
+      </div>
+    </div>
+
+    <aside class="panel">
+      <div class="panel-head">
+        <div><h3>Stack visualizer</h3><div class="sub">Newest item is shown at the top.</div></div>
+      </div>
+      <div class="stack-box">
+        <div class="stack-title"><span>UNDO STACK</span><span id="undoTopLabel">TOP: EMPTY</span></div>
+        <div class="stack-list" id="undoStack"><div class="empty">No saved states yet. Save a change to push a state.</div></div>
+      </div>
+      <div style="height:14px"></div>
+      <div class="stack-box">
+        <div class="stack-title"><span>REDO STACK</span><span id="redoTopLabel">TOP: EMPTY</span></div>
+        <div class="stack-list" id="redoStack"><div class="empty">Nothing to redo yet.</div></div>
+      </div>
+      <div class="explain">
+        <h3>Why a stack?</h3>
+        <p>A stack follows <strong>LIFO</strong> (Last In, First Out). The latest edit is normally the first edit a user wants to reverse, so a stack makes the history operation natural and efficient.</p>
+      </div>
+    </aside>
+  </section>
+</main>
+<footer><span>StackLab · Educational prototype</span><span>Core operations demonstrated: push, pop, peek, and clear</span></footer>
+
+<script>
+"use strict";
+
+const editor = document.getElementById("editor");
+const undoStack = [];
+const redoStack = [];
+let currentText = editor.value;
+let stateNumber = 0;
+
+const undoCount = document.getElementById("undoCount");
+const redoCount = document.getElementById("redoCount");
+const charCount = document.getElementById("charCount");
+const undoBtn = document.getElementById("undoBtn");
+const redoBtn = document.getElementById("redoBtn");
+const statusBox = document.getElementById("status");
+
+function announce(message) {
+  statusBox.textContent = message;
+}
+
+function makeState(text) {
+  stateNumber += 1;
+  return { id: stateNumber, text: text, savedAt: new Date().toLocaleTimeString() };
+}
+
+function preview(text) {
+  const cleaned = text.replace(/\s+/g, " ").trim();
+  return cleaned.length > 42 ? cleaned.slice(0, 42) + "…" : (cleaned || "(empty text)");
+}
+
+function renderStack(container, stack, emptyMessage, topLabel) {
+  container.innerHTML = "";
+  if (stack.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "empty";
+    empty.textContent = emptyMessage;
+    container.appendChild(empty);
+    topLabel.textContent = "TOP: EMPTY";
+    return;
+  }
+
+  topLabel.textContent = "TOP: STATE " + stack[stack.length - 1].id;
+  stack.forEach((state, index) => {
+    const item = document.createElement("div");
+    item.className = "stack-item" + (index === stack.length - 1 ? " top" : "");
+    const left = document.createElement("span");
+    left.textContent = preview(state.text);
+    const right = document.createElement("small");
+    right.innerHTML = "";
+    right.textContent = "S" + state.id + (index === stack.length - 1 ? " · TOP" : "");
+    item.append(left, right);
+    container.appendChild(item);
+  });
+}
+
+function render() {
+  undoCount.textContent = undoStack.length;
+  redoCount.textContent = redoStack.length;
+  charCount.textContent = editor.value.length;
+  undoBtn.disabled = undoStack.length === 0;
+  redoBtn.disabled = redoStack.length === 0;
+  renderStack(document.getElementById("undoStack"), undoStack,
+    "No saved states yet. Save a change to push a state.",
+    document.getElementById("undoTopLabel"));
+  renderStack(document.getElementById("redoStack"), redoStack,
+    "Nothing to redo yet.",
+    document.getElementById("redoTopLabel"));
+}
+
+function saveChange() {
+  const nextText = editor.value;
+  if (nextText === currentText) {
+    announce("No new change detected. Edit the text before saving.");
+    return;
+  }
+  undoStack.push(makeState(currentText)); // PUSH: preserve the previous state
+  currentText = nextText;
+  redoStack.length = 0; // a new edit clears the redo history
+  render();
+  announce("Change saved. Previous version pushed onto the undo stack.");
+}
+
+function undo() {
+  if (undoStack.length === 0) {
+    announce("Undo is unavailable because the undo stack is empty.");
+    return;
+  }
+  redoStack.push(makeState(currentText)); // preserve current version for redo
+  const previous = undoStack.pop();       // POP: retrieve most recent saved state
+  currentText = previous.text;
+  editor.value = currentText;
+  render();
+  announce("Undo complete. Restored the most recent previous version.");
+}
+
+function redo() {
+  if (redoStack.length === 0) {
+    announce("Redo is unavailable because the redo stack is empty.");
+    return;
+  }
+  undoStack.push(makeState(currentText));
+  const next = redoStack.pop();
+  currentText = next.text;
+  editor.value = currentText;
+  render();
+  announce("Redo complete. Restored the version that was undone.");
+}
+
+function clearEditor() {
+  if (editor.value === "" && currentText === "") {
+    announce("The editor is already empty.");
+    return;
+  }
+  undoStack.push(makeState(currentText));
+  currentText = "";
+  editor.value = "";
+  redoStack.length = 0;
+  render();
+  announce("Editor cleared. The previous text can be restored with Undo.");
+}
+
+function loadSample() {
+  const sample = "Stack applications in everyday computing:\n\n1. Undo and Redo in text editors\n2. Browser back navigation\n3. Function calls and recursion\n4. Expression evaluation and syntax checking\n\nThis text is a sample state for testing the stack operations.";
+  if (sample === currentText) {
+    announce("The sample text is already loaded.");
+    return;
+  }
+  undoStack.push(makeState(currentText));
+  currentText = sample;
+  editor.value = sample;
+  redoStack.length = 0;
+  render();
+  announce("Sample loaded. The previous version was pushed onto the undo stack.");
+}
+
+document.getElementById("saveBtn").addEventListener("click", saveChange);
+undoBtn.addEventListener("click", undo);
+redoBtn.addEventListener("click", redo);
+document.getElementById("clearBtn").addEventListener("click", clearEditor);
+document.getElementById("sampleBtn").addEventListener("click", loadSample);
+editor.addEventListener("input", () => {
+  charCount.textContent = editor.value.length;
+});
+
+render();
+</script>
+</body>
+</html>
